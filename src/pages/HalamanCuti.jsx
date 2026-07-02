@@ -53,7 +53,7 @@ export default function HalamanCuti({ profil }) {
     const clientY = e.clientY || (e.touches && e.touches[0].clientY)
     ctx.lineTo(clientX - rect.left, clientY - rect.top)
     ctx.stroke()
-    setAdaTangan(true)
+    setAdaTandaTangan(true)
   }
 
   const selesaiMenggambar = () => {
@@ -64,7 +64,7 @@ export default function HalamanCuti({ profil }) {
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-    setAdaTangan(false)
+    setAdaTandaTangan(false)
   }
 
   const muatRiwayatCuti = async () => {
@@ -215,7 +215,7 @@ export default function HalamanCuti({ profil }) {
                 onTouchStart={mulaiMenggambar}
                 onTouchMove={menggambar}
                 onTouchEnd={selesaiMenggambar}
-                className="w-full h-full bg-white cursor-crosshair blocks"
+                className="w-full h-full bg-white cursor-crosshair blocks touch-none"
               />
             </div>
             <button type="button" onClick={hapusCanvas} className="text-xs text-red-600 font-bold mt-1 block">Hapus Tanda Tangan</button>
