@@ -380,6 +380,7 @@ export default function HalamanMaster() {
             <select value={cabang} onChange={e => setCabang(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-600">
               <option value="Palu">Maxima Palu</option>
               <option value="Luwuk">Maxima Luwuk</option>
+              <option value="Morowali">Maxima Morowali</option>
             </select>
           </div>
           <div>
