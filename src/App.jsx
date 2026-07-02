@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './utils/supabaseClient'
 import HalamanLogin from './pages/HalamanLogin'
-import TataLetak from './components/TataLetak'
 import HalamanCuti from './pages/HalamanCuti'
 import HalamanMaster from './pages/HalamanMaster'
 import HalamanRekapan from './pages/HalamanRekapan'
+import TataLetak from './components/TataLetak'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -15,8 +15,11 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
-      if (session) muatProfilKaryawan(session.user.email)
-      else setLoading(false)
+      if (session) {
+        muatProfilKaryawan(session.user.email)
+      } else {
+        setLoading(false)
+      }
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -25,7 +28,6 @@ export default function App() {
         muatProfilKaryawan(session.user.email)
       } else {
         setProfil(null)
-        setHalamanAktif('cuti')
         setLoading(false)
       }
     })
@@ -34,29 +36,33 @@ export default function App() {
   }, [])
 
   const muatProfilKaryawan = async (email) => {
-    const { data, error } = await supabase
-      .from('profil_karyawan_v2')
-      .select('*')
-      .eq('email', email)
-      .single()
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('profil_karyawan_v2')
+        .select('*')
+        .eq('email', email)
+        .single()
 
-    if (!error && data) {
-      setProfil(data)
-      const jabatanUser = data.jabatan?.toLowerCase()
-      if (jabatanUser === 'branch manager' || data.email === 'ardi13@gmail.com' || data.email === 'julistiawati@gmail.com') {
-        setHalamanAktif('master')
+      if (!error && data) {
+        setProfil(data)
       } else {
-        setHalamanAktif('cuti')
+        setProfil(null)
       }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-blue-50 flex flex-col items-center justify-center">
-        <div className="w-12 h-12 border-4 border-blue-900 border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-4 text-blue-900 font-semibold text-sm animate-pulse">Memuat Aplikasi Maxima Cuti...</p>
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-blue-900 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-sm text-gray-500 mt-3 font-medium">Memverifikasi hak akses kamu...</p>
+        </div>
       </div>
     )
   }
@@ -65,21 +71,33 @@ export default function App() {
     return <HalamanLogin />
   }
 
-  const luruskanHalaman = () => {
-    switch (halamanAktif) {
-      case 'master':
-        return <HalamanMaster />
-      case 'rekapan':
-        return <HalamanRekapan />
-      case 'cuti':
-      default:
-        return <HalamanCuti profil={profil} />
+  const renderHalamanSesuaiHakAkses = () => {
+    if (!profil) {
+      return (
+        <div className="p-6 max-w-md mx-auto mt-10 text-center bg-red-50 border border-red-200 rounded-2xl shadow-sm">
+          <p className="text-sm text-red-600 font-bold">Data profil milikmu belum siap</p>
+          <p className="text-xs text-red-500 mt-1">Sistem sedang memproses pembuatan akun baru. Silakan muat ulang halaman ini secara berkala.</p>
+        </div>
+      )
     }
+
+    const posisiKaryawan = profil.jabatan ? profil.jabatan.toUpperCase() : ''
+    const statusValidBM = posisiKaryawan === 'BM' || posisiKaryawan === 'BRANCH MANAGER'
+
+    if (halamanAktif === 'master' || halamanAktif === 'rekapan') {
+      if (statusValidBM) {
+        if (halamanAktif === 'master') return <HalamanMaster profil={profil} />
+        if (halamanAktif === 'rekapan') return <HalamanRekapan profil={profil} />
+      }
+      return <HalamanCuti profil={profil} />
+    }
+
+    return <HalamanCuti profil={profil} />
   }
 
   return (
-    <TataLetak profil={profil} halamanAktif={halamanAktif} setHalamanAktif={setHalamanAktif}>
-      {luruskanHalaman()}
+    <TataLetak profil={profil} setHalamanAktif={setHalamanAktif} halamanAktif={halamanAktif}>
+      {renderHalamanSesuaiHakAkses()}
     </TataLetak>
   )
 }
