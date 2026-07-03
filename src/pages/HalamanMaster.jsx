@@ -12,6 +12,20 @@ const supabaseSampingan = createClient(supabaseUrl, supabaseAnonKey, {
   }
 })
 
+const dapatkanBobotJabatan = (jabatan) => {
+  const jab = jabatan ? jabatan.toLowerCase() : ''
+  if (jab.includes('branch manager') || jab.includes('bm') || jab.includes('supervisor')) return 1
+  if (jab.includes('marketing')) return 2
+  if (jab.includes('keuangan')) return 3
+  if (jab.includes('admin')) return 4
+  if (jab.includes('pelayanan')) return 5
+  if (jab.includes('analis')) return 6
+  if (jab.includes('phelebotomist') || jab.includes('phlebotomist')) return 7
+  if (jab.includes('radiographer') || jab.includes('radiografer')) return 8
+  if (jab.includes('ob') || jab.includes('office boy')) return 9
+  return 10
+}
+
 function KartuPersetujuanCuti({ p, onSetujui, onTolak }) {
   const canvasRef = useRef(null)
   const [adaTtd, setAdaTtd] = useState(false)
@@ -415,76 +429,94 @@ export default function HalamanMaster() {
           <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-full">{karyawan.length} Orang</span>
         </div>
         
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-blue-50/40 text-blue-950 text-xs font-bold uppercase border-b border-gray-100">
-                <th className="p-4">Nama Karyawan</th>
-                <th className="p-4">Cabang</th>
-                <th className="p-4">Jabatan</th>
-                <th className="p-4">Mulai Kerja</th>
-                <th className="p-4 text-center">Sisa Kuota</th>
-                <th className="p-4 text-center">Tindakan</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
-              {loading ? (
-                <tr><td colSpan="6" className="p-8 text-center text-gray-400">Sedang menarik data...</td></tr>
-              ) : (
-                karyawan.map(k => (
-                  <tr key={k.id} className="hover:bg-gray-50/50 transition">
-                    <td className="p-4 font-semibold text-gray-900">{k.nama_lengkap}</td>
-                    <td className="p-4 text-gray-500">{k.cabang || 'Palu'}</td>
-                    <td className="p-4 text-gray-500">{k.jabatan}</td>
-                    <td className="p-4">{k.tanggal_masuk}</td>
-                    <td className="p-4 text-center">
-                      {k.sisa_cuti < 0 ? (
-                        <span className="text-red-600 font-bold">Hutang {Math.abs(k.sisa_cuti)} Hari</span>
-                      ) : (
-                        <span className="text-blue-700 font-bold">{k.sisa_cuti} Hari</span>
-                      )}
-                    </td>
-                    <td className="p-4 flex justify-center gap-2">
-                      <button onClick={() => tanganiEdit(k)} className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded-lg transition font-medium">Edit</button>
-                      <button onClick={() => tanganiHapus(k.id)} className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded-lg transition font-medium">Hapus</button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        {loading ? (
+          <p className="p-6 text-center text-gray-400 text-sm">Sedang menarik data...</p>
+        ) : (
+          <div className="p-4 space-y-6">
+            {['Palu', 'Luwuk', 'Morowali'].map(cab => {
+              const karyawanCabang = karyawan
+                .filter(k => (k.cabang || 'Palu').toLowerCase() === cab.toLowerCase())
+                .sort((a, b) => {
+                  const bobotA = dapatkanBobotJabatan(a.jabatan)
+                  const bobotB = dapatkanBobotJabatan(b.jabatan)
+                  if (bobotA !== bobotB) return bobotA - bobotB
+                  return a.nama_lengkap.localeCompare(b.nama_lengkap)
+                })
 
-        <div className="block md:hidden divide-y divide-gray-100">
-          {loading ? (
-            <p className="p-6 text-center text-gray-400 text-sm">Sedang menarik data...</p>
-          ) : (
-            karyawan.map(k => (
-              <div key={k.id} className="p-4 space-y-2 bg-white hover:bg-gray-50/40">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-bold text-gray-900 text-sm">{k.nama_lengkap}</p>
-                    <p className="text-xs text-gray-500">{k.jabatan} ({k.cabang || 'Palu'})</p>
+              if (karyawanCabang.length === 0) return null
+
+              return (
+                <div key={cab} className="border border-gray-200 rounded-xl overflow-hidden shadow-xs">
+                  <div className="bg-blue-50/50 px-4 py-3 border-b border-gray-100 flex justify-between items-center">
+                    <span className="font-bold text-xs text-blue-950 uppercase tracking-wider">Cabang {cab}</span>
+                    <span className="bg-blue-100 text-blue-800 text-xxs font-bold px-2.5 py-0.5 rounded-full">{karyawanCabang.length} Orang</span>
                   </div>
-                  <div className="text-xs">
-                    {k.sisa_cuti < 0 ? (
-                      <span className="bg-red-50 text-red-700 font-bold text-xs px-2.5 py-1 rounded-full">Hutang {Math.abs(k.sisa_cuti)} Hari</span>
-                    ) : (
-                      <span className="bg-blue-50 text-blue-700 font-bold text-xs px-2.5 py-1 rounded-full">{k.sisa_cuti} Hari</span>
-                    )}
+                  
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 text-gray-700 text-xs font-bold uppercase border-b border-gray-100">
+                          <th className="p-4">Nama Karyawan</th>
+                          <th className="p-4">Jabatan</th>
+                          <th className="p-4">Mulai Kerja</th>
+                          <th className="p-4 text-center">Sisa Kuota</th>
+                          <th className="p-4 text-center">Tindakan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
+                        {karyawanCabang.map(k => (
+                          <tr key={k.id} className="hover:bg-gray-50/50 transition">
+                            <td className="p-4 font-semibold text-gray-900">{k.nama_lengkap}</td>
+                            <td className="p-4 text-gray-500">{k.jabatan}</td>
+                            <td className="p-4">{k.tanggal_masuk}</td>
+                            <td className="p-4 text-center">
+                              {k.sisa_cuti < 0 ? (
+                                <span className="text-red-600 font-bold">Hutang {Math.abs(k.sisa_cuti)} Hari</span>
+                              ) : (
+                                <span className="text-blue-700 font-bold">{k.sisa_cuti} Hari</span>
+                              )}
+                            </td>
+                            <td className="p-4 flex justify-center gap-2">
+                              <button onClick={() => tanganiEdit(k)} className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded-lg transition font-medium">Edit</button>
+                              <button onClick={() => tanganiHapus(k.id)} className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded-lg transition font-medium">Hapus</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="block md:hidden divide-y divide-gray-100">
+                    {karyawanCabang.map(k => (
+                      <div key={k.id} className="p-4 space-y-2 bg-white hover:bg-gray-50/40">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-bold text-gray-900 text-sm">{k.nama_lengkap}</p>
+                            <p className="text-xs text-gray-500">{k.jabatan}</p>
+                          </div>
+                          <div className="text-xs">
+                            {k.sisa_cuti < 0 ? (
+                              <span className="bg-red-50 text-red-700 font-bold text-xs px-2.5 py-1 rounded-full">Hutang {Math.abs(k.sisa_cuti)} Hari</span>
+                            ) : (
+                              <span className="bg-blue-50 text-blue-700 font-bold text-xs px-2.5 py-1 rounded-full">{k.sisa_cuti} Hari</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center pt-2 text-xs text-gray-400">
+                          <p>Masuk: {k.tanggal_masuk}</p>
+                          <div className="flex gap-2">
+                            <button onClick={() => tanganiEdit(k)} className="bg-green-600 text-white px-3 py-1 rounded-md font-medium shadow-sm">Edit</button>
+                            <button onClick={() => tanganiHapus(k.id)} className="bg-red-600 text-white px-3 py-1 rounded-md font-medium shadow-sm">Hapus</button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <div className="flex justify-between items-center pt-2 text-xs text-gray-400">
-                  <p>Masuk: {k.tanggal_masuk}</p>
-                  <div className="flex gap-2">
-                    <button onClick={() => tanganiEdit(k)} className="bg-green-600 text-white px-3 py-1 rounded-md font-medium shadow-sm">Edit</button>
-                    <button onClick={() => tanganiHapus(k.id)} className="bg-red-600 text-white px-3 py-1 rounded-md font-medium shadow-sm">Hapus</button>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )
