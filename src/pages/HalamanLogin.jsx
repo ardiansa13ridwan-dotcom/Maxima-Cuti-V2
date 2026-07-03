@@ -50,6 +50,7 @@ export default function HalamanLogin() {
               className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-600" 
               required 
               placeholder="nama@maximalab.co.id"
+              autoComplete="off"
             />
           </div>
 
@@ -62,6 +63,7 @@ export default function HalamanLogin() {
               className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-600" 
               required 
               placeholder="••••••••"
+              autoComplete="new-password"
             />
           </div>
 
