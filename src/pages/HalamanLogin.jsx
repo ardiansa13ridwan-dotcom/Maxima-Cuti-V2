@@ -24,19 +24,17 @@ export default function HalamanLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-blue-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
         
-        {/* Wadah Logo Bagian Atas */}
-        <div className="bg-black p-6 flex justify-center items-center border-b-4 border-blue-800">
+        <div className="bg-white p-6 flex justify-center items-center border-b border-gray-100">
           <img 
             src="logo-maxima.png" 
-            alt="logo-maxima" 
+            alt="Logo Maxima" 
             className="h-20 object-contain"
           />
         </div>
 
-        {/* Form Login Utama */}
         <form onSubmit={tanganiLogin} className="p-6 space-y-4" autoComplete="off">
           <div className="text-center pb-2">
             <h2 className="text-lg font-bold text-blue-900 uppercase tracking-wider">Sistem Informasi Cuti</h2>
