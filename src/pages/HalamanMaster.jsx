@@ -197,11 +197,12 @@ export default function HalamanMaster() {
       return
     }
 
-    if (p.jenis_cuti === 'Cuti Tahunan' || p.jenis_cuti === 'Izin') {
+    const jenis = p.jenis_cuti ? p.jenis_cuti.toLowerCase() : ''
+    if (jenis.includes('tahunan') || jenis.includes('izin')) {
       const { data: dataStaf, error: errorFetch } = await supabase
         .from('profil_karyawan_v2')
         .select('sisa_cuti')
-        .eq('email', p.email_karyawan)
+        .ilike('email', p.email_karyawan)
         .single()
 
       if (errorFetch) {
@@ -214,7 +215,7 @@ export default function HalamanMaster() {
         const { error: errorUpdateProfil } = await supabase
           .from('profil_karyawan_v2')
           .update({ sisa_cuti: kalkulasiSisa })
-          .eq('email', p.email_karyawan)
+          .ilike('email', p.email_karyawan)
 
         if (errorUpdateProfil) {
           alert('Gagal memotong kuota staf: ' + errorUpdateProfil.message)
