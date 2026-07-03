@@ -1,94 +1,80 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { supabase } from '../utils/supabaseClient'
 
 export default function HalamanLogin() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [proses, setProses] = useState(false)
-
-  // Memaksa kolom input kosong setiap kali halaman dimuat ulang
-  useEffect(() => {
-    setEmail('')
-    setPassword('')
-  }, [])
+  const [loading, setLoading] = useState(false)
 
   const tanganiLogin = async (e) => {
     e.preventDefault()
-    if (!email || !password) return alert('Silakan isi email dan kata sandi Anda!')
-
-    setProses(true)
+    setLoading(true)
+    
     const { error } = await supabase.auth.signInWithPassword({
       email: email,
-      password: password,
+      password: password
     })
 
     if (error) {
-      alert('Login gagal: ' + error.message)
-      setPassword('')
+      alert('Gagal masuk: ' + error.message)
     } else {
-      setEmail('')
-      setPassword('')
+      alert('Kamu berhasil masuk ke sistem!')
     }
-    setProses(false)
+    setLoading(false)
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 to-blue-700 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-blue-100">
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
         
-        <div className="bg-blue-900 px-6 py-8 text-center text-white relative">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-blue-800 opacity-20 rounded-full transform translate-x-8 -translate-y-8"></div>
-          <h2 className="text-2xl font-bold tracking-wide">Sistem Cuti Karyawan</h2>
-          <p className="text-blue-200 text-xs mt-1 uppercase tracking-wider font-medium">Maxima Laboratorium Klinik</p>
+        {/* Wadah Logo Bagian Atas */}
+        <div className="bg-black p-6 flex justify-center items-center border-b-4 border-blue-800">
+          <img 
+            src="Logo Maxima seminar.jpg" 
+            alt="Logo Maxima" 
+            className="h-20 object-contain"
+          />
         </div>
 
-        <form onSubmit={tanganiLogin} className="p-6 space-y-5 bg-white" autoComplete="off">
+        {/* Form Login Utama */}
+        <form onSubmit={tanganiLogin} className="p-6 space-y-4" autoComplete="off">
+          <div className="text-center pb-2">
+            <h2 className="text-lg font-bold text-blue-900 uppercase tracking-wider">Sistem Informasi Cuti</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Silakan masuk menggunakan akun resmi milikmu</p>
+          </div>
+
           <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Alamat Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="nama@gmail.com"
-              className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-800 shadow-sm focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 focus:outline-none transition"
-              required
-              autoComplete="off"
+            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Email Resmi</label>
+            <input 
+              type="email" 
+              value={email} 
+              onChange={e => setEmail(e.target.value)} 
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-600" 
+              required 
+              placeholder="nama@maximalab.co.id"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Kata Sandi</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Kata Sandi</label>
+            <input 
+              type="password" 
+              value={password} 
+              onChange={e => setPassword(e.target.value)} 
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-600" 
+              required 
               placeholder="••••••••"
-              className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-800 shadow-sm focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 focus:outline-none transition"
-              required
-              autoComplete="new-password"
             />
           </div>
 
-          <div className="pt-2">
-            <button
-              type="submit"
-              disabled={proses}
-              className="w-full bg-blue-800 hover:bg-blue-900 disabled:bg-blue-400 text-white font-semibold py-3.5 rounded-xl shadow-lg hover:shadow-xl active:transform active:scale-95 transition-all text-sm flex items-center justify-center"
-            >
-              {proses ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                'Masuk Ke Akun'
-              )}
-            </button>
-          </div>
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="w-full bg-blue-800 hover:bg-blue-900 text-white font-semibold py-3 rounded-xl text-sm transition shadow-md mt-2 disabled:bg-gray-400"
+          >
+            {loading ? 'Memproses Akses...' : 'Masuk Aplikasi'}
+          </button>
         </form>
-
-        <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 text-center">
-          <p className="text-xxs text-gray-400 font-medium tracking-wide uppercase">
-            Dibuat oleh Ar Development Team
-          </p>
-        </div>
 
       </div>
     </div>
