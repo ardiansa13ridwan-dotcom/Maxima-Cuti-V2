@@ -30,8 +30,8 @@ export default function HalamanLogin() {
         {/* Wadah Logo Bagian Atas */}
         <div className="bg-black p-6 flex justify-center items-center border-b-4 border-blue-800">
           <img 
-            src="Logo-Maxima.png" 
-            alt="Logo Maxima" 
+            src="logo-maxima.png" 
+            alt="logo-maxima" 
             className="h-20 object-contain"
           />
         </div>
