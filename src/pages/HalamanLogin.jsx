@@ -86,7 +86,7 @@ export default function HalamanLogin() {
 
         <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 text-center">
           <p className="text-xxs text-gray-400 font-medium tracking-wide uppercase">
-            Dikembangkan oleh Ar Development Team
+            Dibuat oleh Ar Development Team
           </p>
         </div>
 
