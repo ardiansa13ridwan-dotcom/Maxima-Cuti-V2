@@ -150,6 +150,7 @@ export default function HalamanMaster() {
   const [sisaCuti, setSisaCuti] = useState(0)
   const [password, setPassword] = useState('')
   const [cabang, setCabang] = useState('Palu')
+  const [kataKunci, setKataKunci] = useState('')
 
   useEffect(() => {
     muatKaryawan()
@@ -161,7 +162,7 @@ export default function HalamanMaster() {
     setLoading(true)
     const { data, error } = await supabase
       .from('profil_karyawan_v2')
-      .select('*')
+      .select()
       .order('nama_lengkap', { ascending: true })
 
     if (!error) setKaryawan(data || [])
@@ -172,7 +173,7 @@ export default function HalamanMaster() {
     setLoadingCuti(true)
     const { data, error } = await supabase
       .from('pengajuan_cuti')
-      .select('*')
+      .select()
       .eq('status', 'Menunggu')
       .order('created_at', { ascending: false })
 
@@ -188,7 +189,7 @@ export default function HalamanMaster() {
     const hariIni = new Date()
     const tglMasuk = new Date(tgl)
     const selisihWaktu = hariIni.getTime() - tglMasuk.getTime()
-    const selisihHari = Math.ceil(selisihWaktu / (1000 * 3600 * 24))
+    const selisihHari = Math.ceil(selisihWaktu / 86400000)
 
     if (selisihHari < 365) {
       setSisaCuti(0)
@@ -356,12 +357,7 @@ export default function HalamanMaster() {
         ) : (
           <div className="grid grid-cols-1 gap-3">
             {pengajuanMasuk.map(p => (
-              <KartuPersetujuanCuti 
-                key={p.id} 
-                p={p} 
-                onSetujui={tanganiSetujui} 
-                onTolak={tanganiTolak} 
-              />
+              <KartuPersetujuanCuti key={p.id} onSetujui={tanganiSetujui} onTolak={tanganiTolak} p={p}/>
             ))}
           </div>
         )}
@@ -424,9 +420,14 @@ export default function HalamanMaster() {
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
-          <h3 className="font-bold text-gray-700 text-xs uppercase tracking-wider">Daftar Anggota Karyawan</h3>
-          <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-full">{karyawan.length} Orang</span>
+        <div className="p-4 bg-gray-50 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h3 className="font-bold text-gray-700 text-xs uppercase tracking-wider">Daftar Anggota Karyawan</h3>
+            <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-full mt-1 inline-block">{karyawan.length} Orang</span>
+          </div>
+          <div className="w-full sm:w-64">
+            <input type="text" placeholder="Cari nama atau jabatan..." value={kataKunci} onChange={e => setKataKunci(e.target.value)} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-blue-600" />
+          </div>
         </div>
         
         {loading ? (
@@ -436,6 +437,11 @@ export default function HalamanMaster() {
             {['Palu', 'Luwuk', 'Morowali'].map(cab => {
               const karyawanCabang = karyawan
                 .filter(k => (k.cabang || 'Palu').toLowerCase() === cab.toLowerCase())
+                .filter(k => {
+                  const namaMatch = k.nama_lengkap.toLowerCase().includes(kataKunci.toLowerCase())
+                  const jabMatch = (k.jabatan || '').toLowerCase().includes(kataKunci.toLowerCase())
+                  return namaMatch || jabMatch
+                })
                 .sort((a, b) => {
                   const bobotA = dapatkanBobotJabatan(a.jabatan)
                   const bobotB = dapatkanBobotJabatan(b.jabatan)
