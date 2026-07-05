@@ -4,13 +4,14 @@ import HalamanLogin from './pages/HalamanLogin'
 import HalamanCuti from './pages/HalamanCuti'
 import HalamanMaster from './pages/HalamanMaster'
 import HalamanRekapan from './pages/HalamanRekapan'
+import HalamanDashboard from './pages/HalamanDashboard'
 import TataLetak from './components/TataLetak'
 
 export default function App() {
   const [session, setSession] = useState(null)
   const [profil, setProfil] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [halamanAktif, setHalamanAktif] = useState('cuti')
+  const [halamanAktif, setHalamanAktif] = useState('dashboard')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -84,12 +85,16 @@ export default function App() {
     const posisiKaryawan = profil.jabatan ? profil.jabatan.toUpperCase() : ''
     const statusValidBM = posisiKaryawan === 'BM' || posisiKaryawan === 'BRANCH MANAGER'
 
-    if (halamanAktif === 'master' || halamanAktif === 'rekapan') {
-      if (statusValidBM) {
-        if (halamanAktif === 'master') return <HalamanMaster profil={profil} />
-        if (halamanAktif === 'rekapan') return <HalamanRekapan profil={profil} />
-      }
-      return <HalamanCuti profil={profil} />
+    if (halamanAktif === 'dashboard') {
+      return statusValidBM ? <HalamanDashboard profil={profil} /> : <HalamanCuti profil={profil} />
+    }
+
+    if (halamanAktif === 'master') {
+      return statusValidBM ? <HalamanMaster profil={profil} /> : <HalamanCuti profil={profil} />
+    }
+
+    if (halamanAktif === 'rekapan') {
+      return statusValidBM ? <HalamanRekapan profil={profil} /> : <HalamanCuti profil={profil} />
     }
 
     return <HalamanCuti profil={profil} />
