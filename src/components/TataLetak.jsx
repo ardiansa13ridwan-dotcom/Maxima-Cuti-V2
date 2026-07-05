@@ -23,6 +23,12 @@ export default function TataLetak({ children, profil, halamanAktif, setHalamanAk
           {isAdmin && (
             <>
               <button 
+                onClick={() => setHalamanAktif('dashboard')}
+                className={`px-3 py-2 rounded-md font-bold whitespace-nowrap ${halamanAktif === 'dashboard' ? 'bg-blue-950 text-white' : 'text-blue-200'}`}
+              >
+                Dashboard
+              </button>
+              <button 
                 onClick={() => setHalamanAktif('master')}
                 className={`px-3 py-2 rounded-md font-bold whitespace-nowrap ${halamanAktif === 'master' ? 'bg-blue-950 text-white' : 'text-blue-200'}`}
               >
@@ -41,6 +47,12 @@ export default function TataLetak({ children, profil, halamanAktif, setHalamanAk
             className={`px-3 py-2 rounded-md font-bold whitespace-nowrap ${halamanAktif === 'cuti' ? 'bg-blue-950 text-white' : 'text-blue-200'}`}
           >
             Pengajuan Cuti
+          </button>
+          <button 
+            onClick={() => setHalamanAktif('riwayat')}
+            className={`px-3 py-2 rounded-md font-bold whitespace-nowrap ${halamanAktif === 'riwayat' ? 'bg-blue-950 text-white' : 'text-blue-200'}`}
+          >
+            Riwayat Kuota
           </button>
         </div>
       </header>
@@ -61,6 +73,12 @@ export default function TataLetak({ children, profil, halamanAktif, setHalamanAk
             {isAdmin && (
               <>
                 <button 
+                  onClick={() => setHalamanAktif('dashboard')}
+                  className={`w-full text-left font-bold py-3 px-4 rounded-xl transition text-xs uppercase tracking-wider ${halamanAktif === 'dashboard' ? 'bg-blue-950 text-white shadow' : 'text-blue-100 hover:bg-blue-800'}`}
+                >
+                  📊 Dashboard Utama
+                </button>
+                <button 
                   onClick={() => setHalamanAktif('master')}
                   className={`w-full text-left font-bold py-3 px-4 rounded-xl transition text-xs uppercase tracking-wider ${halamanAktif === 'master' ? 'bg-blue-950 text-white shadow' : 'text-blue-100 hover:bg-blue-800'}`}
                 >
@@ -70,7 +88,7 @@ export default function TataLetak({ children, profil, halamanAktif, setHalamanAk
                   onClick={() => setHalamanAktif('rekapan')}
                   className={`w-full text-left font-bold py-3 px-4 rounded-xl transition text-xs uppercase tracking-wider ${halamanAktif === 'rekapan' ? 'bg-blue-950 text-white shadow' : 'text-blue-100 hover:bg-blue-800'}`}
                 >
-                  📊 Laporan Rekap
+                  📋 Laporan Rekap
                 </button>
               </>
             )}
@@ -79,6 +97,12 @@ export default function TataLetak({ children, profil, halamanAktif, setHalamanAk
               className={`w-full text-left font-bold py-3 px-4 rounded-xl transition text-xs uppercase tracking-wider ${halamanAktif === 'cuti' ? 'bg-blue-950 text-white shadow' : 'text-blue-100 hover:bg-blue-800'}`}
             >
               📝 Pengajuan Cuti
+            </button>
+            <button 
+              onClick={() => setHalamanAktif('riwayat')}
+              className={`w-full text-left font-bold py-3 px-4 rounded-xl transition text-xs uppercase tracking-wider ${halamanAktif === 'riwayat' ? 'bg-blue-950 text-white shadow' : 'text-blue-100 hover:bg-blue-800'}`}
+            >
+              🕒 Riwayat Kuota
             </button>
           </nav>
         </div>
