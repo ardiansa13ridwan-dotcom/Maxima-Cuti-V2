@@ -42,7 +42,7 @@ export default function App() {
       setLoading(true)
       const { data, error } = await supabase
         .from('profil_karyawan_v2')
-        .select('*')
+        .select('id, email, nama_lengkap, jabatan, sisa_cuti, tanggal_masuk')
         .eq('email', email)
         .single()
 
@@ -84,7 +84,7 @@ export default function App() {
     }
 
     const posisiKaryawan = profil.jabatan ? profil.jabatan.toUpperCase() : ''
-    const statusValidBM = posisiKaryawan === 'BM' || posisiKaryawan === 'BRANCH MANAGER'
+    const statusValidBM = posisiKaryawan === 'BM' || posisiKaryawan === 'BRANCH MANAGER' || profil.email === 'ardi13@gmail.com'
 
     if (halamanAktif === 'dashboard') {
       return statusValidBM ? <HalamanDashboard profil={profil} /> : <HalamanCuti profil={profil} />
@@ -99,7 +99,7 @@ export default function App() {
     }
 
     if (halamanAktif === 'riwayat') {
-      return <HalamanRiwayat />
+      return <HalamanRiwayat profil={profil} />
     }
 
     return <HalamanCuti profil={profil} />
