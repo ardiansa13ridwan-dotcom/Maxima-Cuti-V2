@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../utils/supabaseClient'
 
-export default function HalamanRiwayat() {
+export default function HalamanRiwayat({ profil }) {
   const [riwayat, setRiwayat] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -11,10 +11,17 @@ export default function HalamanRiwayat() {
 
   const muatRiwayat = async () => {
     setLoading(true)
-    const { data } = await supabase
-      .from('riwayat_kuota')
-      .select('*')
-      .order('id', { ascending: false })
+    
+    const posisiKaryawan = profil?.jabatan ? profil.jabatan.toUpperCase() : ''
+    const isAdmin = posisiKaryawan === 'BM' || posisiKaryawan === 'BRANCH MANAGER' || profil?.email === 'ardi13@gmail.com'
+
+    let req = supabase.from('riwayat_kuota').select('id, email, nama_karyawan, perubahan, keterangan')
+    
+    if (!isAdmin) {
+      req = req.eq('email', profil?.email)
+    }
+
+    const { data } = await req.order('id', { ascending: false })
 
     if (data) {
       setRiwayat(data)
