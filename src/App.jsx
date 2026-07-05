@@ -5,6 +5,7 @@ import HalamanCuti from './pages/HalamanCuti'
 import HalamanMaster from './pages/HalamanMaster'
 import HalamanRekapan from './pages/HalamanRekapan'
 import HalamanDashboard from './pages/HalamanDashboard'
+import HalamanRiwayat from './pages/HalamanRiwayat'
 import TataLetak from './components/TataLetak'
 
 export default function App() {
@@ -95,6 +96,10 @@ export default function App() {
 
     if (halamanAktif === 'rekapan') {
       return statusValidBM ? <HalamanRekapan profil={profil} /> : <HalamanCuti profil={profil} />
+    }
+
+    if (halamanAktif === 'riwayat') {
+      return <HalamanRiwayat />
     }
 
     return <HalamanCuti profil={profil} />
