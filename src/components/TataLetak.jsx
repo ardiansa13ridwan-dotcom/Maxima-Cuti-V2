@@ -65,14 +65,30 @@ export default function TataLetak({ children, profil, halamanAktif, setHalamanAk
         <div className="space-y-6">
           <div>
             <h1 className="font-bold text-xl tracking-wider uppercase pb-1">Maxima Cuti</h1>
-            <p className="text-xxs text-blue-300 font-medium tracking-wide">by AR Development Team</p>
+            <p className="text-xxs text-blue-300 font-medium tracking-wide">Crafted by AR Development Team</p>
             <div className="border-b border-blue-800 mt-3"></div>
           </div>
           
-          <div className="bg-blue-950 p-4 rounded-xl border border-blue-800">
-            <p className="text-xs text-blue-300 uppercase font-bold tracking-wider">Pengguna aktif</p>
-            <p className="font-semibold text-sm mt-1 truncate">{profil?.nama_lengkap || 'Staf Maxima'}</p>
-            <p className="text-xs text-blue-200 capitalize mt-0.5">{profil?.jabatan || 'Karyawan'}</p>
+          {/* Kotak Pengguna Aktif dengan Foto Profil Bersatu */}
+          <div className="bg-blue-950 p-4 rounded-xl border border-blue-800 flex items-center gap-3">
+            {profil?.foto_url ? (
+              <img 
+                src={profil.foto_url} 
+                alt="Foto Profil" 
+                className="w-12 h-12 rounded-full object-cover border border-blue-400 flex-shrink-0"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-blue-800 border border-blue-400 flex items-center justify-center flex-shrink-0">
+                <span className="text-base font-bold text-white">
+                  {profil?.nama_lengkap ? profil.nama_lengkap.charAt(0).toUpperCase() : 'M'}
+                </span>
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-xxs text-blue-300 uppercase font-bold tracking-wider">Pengguna aktif</p>
+              <p className="font-semibold text-sm mt-0.5 truncate">{profil?.nama_lengkap || 'Staf Maxima'}</p>
+              <p className="text-xs text-blue-200 capitalize truncate">{profil?.jabatan || 'Karyawan'}</p>
+            </div>
           </div>
 
           {/* Menu Navigasi Layar Komputer */}
