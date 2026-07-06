@@ -65,7 +65,7 @@ export default function TataLetak({ children, profil, halamanAktif, setHalamanAk
         <div className="space-y-6">
           <div>
             <h1 className="font-bold text-xl tracking-wider uppercase pb-1">Maxima Cuti</h1>
-            <p className="text-xxs text-blue-300 font-medium tracking-wide">Crafted by AR Development Team</p>
+            <p className="text-xxs text-blue-300 font-medium tracking-wide">by AR Development Team</p>
             <div className="border-b border-blue-800 mt-3"></div>
           </div>
           
