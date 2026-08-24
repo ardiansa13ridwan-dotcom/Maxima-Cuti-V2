@@ -9,7 +9,7 @@ export default function HalamanCuti({ profil }) {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
-  // State Form Pengajuan
+  // State Form Pengajuan sesuai struktur awal
   const [jenisCuti, setJenisCuti] = useState('Cuti Tahunan')
   const [tanggalMulai, setTanggalMulai] = useState('')
   const [tanggalSelesai, setTanggalSelesai] = useState('')
@@ -25,7 +25,6 @@ export default function HalamanCuti({ profil }) {
     setLoading(true)
     let query = supabase.from('pengajuan_cuti').select('*').order('id', { ascending: false })
 
-    // Jika staf biasa, hanya tampilkan pengajuan miliknya sendiri
     if (!isAdmin && profil?.email) {
       query = query.eq('email_karyawan', profil.email)
     }
@@ -37,7 +36,6 @@ export default function HalamanCuti({ profil }) {
     setLoading(false)
   }
 
-  // Hitung jumlah hari kerja (selisih tanggal)
   const hitungJumlahHari = (mulai, selesai) => {
     if (!mulai || !selesai) return 0
     const dMulai = new Date(mulai)
@@ -59,7 +57,6 @@ export default function HalamanCuti({ profil }) {
       return
     }
 
-    // Validasi sisa kuota jika cuti tahunan
     if (jenisCuti === 'Cuti Tahunan' && profil?.sisa_cuti !== undefined && durasi > profil.sisa_cuti) {
       setPesanError(`Sisa kuota cuti tahunan Anda tidak mencukupi (${profil.sisa_cuti} hari tersisa).`)
       return
@@ -68,17 +65,15 @@ export default function HalamanCuti({ profil }) {
     setSubmitting(true)
 
     const payload = {
-      nama_karyawan: profil?.nama_lengkap || 'Karyawan',
+      nama_karyawan: profil?.nama_lengkap || '',
       email_karyawan: profil?.email || '',
       jabatan: profil?.jabatan || '',
-      cabang: profil?.cabang_penugasan || '',
       jenis_cuti: jenisCuti,
       tanggal_mulai: tanggalMulai,
       tanggal_selesai: tanggalSelesai,
       jumlah_hari: durasi,
       alasan: alasan,
-      status: 'Menunggu Persetujuan',
-      tanggal_pengajuan: new Date().toISOString()
+      status: 'Menunggu Persetujuan'
     }
 
     const { error } = await supabase.from('pengajuan_cuti').insert([payload])
@@ -86,9 +81,9 @@ export default function HalamanCuti({ profil }) {
     if (error) {
       setPesanError('Gagal mengajukan cuti: ' + error.message)
     } else {
-      setPesanSukses('Pengajuan cuti berhasil dikirim! Menyiapkan notifikasi WhatsApp...')
+      setPesanSukses('Pengajuan cuti berhasil dikirim!')
       
-      // Kirim Notifikasi WhatsApp ke Branch Manager
+      // Kirim Notifikasi WhatsApp ke Branch Manager (6281234567890)
       kirimNotifKeBranchManager({
         namaStaf: profil?.nama_lengkap,
         jabatan: profil?.jabatan,
@@ -97,10 +92,10 @@ export default function HalamanCuti({ profil }) {
         tglMulai: tanggalMulai,
         tglSelesai: tanggalSelesai,
         jumlahHari: durasi,
-        alasan: alasan
+        alasan: alasan,
+        nomorTujuan: '6281234567890'
       })
 
-      // Reset form
       setJenisCuti('Cuti Tahunan')
       setTanggalMulai('')
       setTanggalSelesai('')
@@ -110,7 +105,6 @@ export default function HalamanCuti({ profil }) {
     setSubmitting(false)
   }
 
-  // Aksi Persetujuan / Penolakan oleh Admin
   const handleAksiStatus = async (id, statusBaru) => {
     const konfirmasi = window.confirm(`Apakah Anda yakin ingin mengubah status menjadi "${statusBaru}"?`)
     if (!konfirmasi) return
@@ -158,7 +152,7 @@ export default function HalamanCuti({ profil }) {
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Nama Pemohon</label>
+            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">NAMA PEMOHON</label>
             <input 
               type="text" 
               value={profil?.nama_lengkap || ''} 
@@ -168,22 +162,19 @@ export default function HalamanCuti({ profil }) {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Jenis Cuti</label>
+            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">JENIS CUTI</label>
             <select 
               value={jenisCuti} 
               onChange={(e) => setJenisCuti(e.target.value)}
               className="w-full border border-gray-200 p-2.5 rounded-xl text-sm focus:outline-none focus:border-blue-900 bg-white"
             >
               <option value="Cuti Tahunan">Cuti Tahunan</option>
-              <option value="Cuti Sakit">Cuti Sakit</option>
               <option value="Cuti Melahirkan">Cuti Melahirkan</option>
-              <option value="Cuti Alasan Penting">Cuti Alasan Penting</option>
-              <option value="Cuti Khusus">Cuti Khusus</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Tanggal Mulai Cuti</label>
+            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">TANGGAL MULAI CUTI</label>
             <input 
               type="date" 
               value={tanggalMulai} 
@@ -194,7 +185,7 @@ export default function HalamanCuti({ profil }) {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Tanggal Selesai Cuti</label>
+            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">TANGGAL SELESAI CUTI</label>
             <input 
               type="date" 
               value={tanggalSelesai} 
@@ -206,7 +197,7 @@ export default function HalamanCuti({ profil }) {
 
           <div className="md:col-span-2">
             <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-              Alasan / Keterangan Cuti
+              ALASAN / KETERANGAN CUTI
             </label>
             <textarea 
               rows="3" 
@@ -217,12 +208,6 @@ export default function HalamanCuti({ profil }) {
               className="w-full border border-gray-200 p-2.5 rounded-xl text-sm focus:outline-none focus:border-blue-900"
             ></textarea>
           </div>
-
-          {tanggalMulai && tanggalSelesai && (
-            <div className="md:col-span-2 bg-blue-50/50 p-3 rounded-xl text-xs text-blue-900 font-semibold">
-              Total Durasi Pengajuan: {hitungJumlahHari(tanggalMulai, tanggalSelesai)} Hari
-            </div>
-          )}
 
           <div className="md:col-span-2 pt-2">
             <button 
@@ -253,13 +238,13 @@ export default function HalamanCuti({ profil }) {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-gray-50 text-gray-700 text-xs font-bold uppercase border-b border-gray-100">
-                  <th className="p-4">Karyawan</th>
-                  <th className="p-4">Jenis Cuti</th>
-                  <th className="p-4">Periode</th>
-                  <th className="p-4">Durasi</th>
-                  <th className="p-4">Keterangan</th>
-                  <th className="p-4">Status</th>
-                  {isAdmin && <th className="p-4">Aksi Persetujuan</th>}
+                  <th className="p-4">KARYAWAN</th>
+                  <th className="p-4">JENIS CUTI</th>
+                  <th className="p-4">PERIODE</th>
+                  <th className="p-4">DURASI</th>
+                  <th className="p-4">KETERANGAN</th>
+                  <th className="p-4">STATUS</th>
+                  {isAdmin && <th className="p-4">AKSI PERSETUJUAN</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
@@ -267,13 +252,13 @@ export default function HalamanCuti({ profil }) {
                   <tr key={item.id} className="hover:bg-gray-50/50 transition">
                     <td className="p-4">
                       <p className="font-semibold text-gray-900">{item.nama_karyawan}</p>
-                      <p className="text-xxs text-gray-400">{item.jabatan || item.cabang || item.email_karyawan}</p>
+                      <p className="text-xxs text-gray-400">{item.jabatan || item.email_karyawan}</p>
                     </td>
                     <td className="p-4 text-xs font-medium text-gray-600">{item.jenis_cuti}</td>
                     <td className="p-4 text-xs text-gray-500 whitespace-nowrap">
-                      {item.tanggal_mulai} s/d {item.tanggal_selesai}
+                      {item.tanggal_mulai ? `${item.tanggal_mulai} s/d ${item.tanggal_selesai}` : '-'}
                     </td>
-                    <td className="p-4 text-xs font-bold text-blue-900">{item.jumlah_hari} Hari</td>
+                    <td className="p-4 text-xs font-bold text-blue-900">{item.jumlah_hari || 0} Hari</td>
                     <td className="p-4 text-xs text-gray-500 max-w-xs truncate">{item.alasan || '-'}</td>
                     <td className="p-4 whitespace-nowrap">
                       <span className={`text-xxs font-bold px-2.5 py-1 rounded-full ${
