@@ -156,7 +156,7 @@ export default function HalamanCuti({ profil }) {
       kirimNotifKeBranchManager({
         namaStaf: profil?.nama_lengkap,
         jabatan: profil?.jabatan,
-        cabang: profil?.cabang_penugasan,
+        cabang: profil?.cabang || 'Palu',
         jenisCuti: jenisCuti,
         tglMulai: tanggalMulai,
         tglSelesai: tanggalSelesai,
