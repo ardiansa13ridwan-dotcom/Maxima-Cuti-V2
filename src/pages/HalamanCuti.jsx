@@ -36,7 +36,7 @@ export default function HalamanCuti({ profil }) {
     setLoading(false)
   }
 
-  // Hitung jumlah hari
+  // Hitung jumlah hari cuti
   const hitungJumlahHari = (mulai, selesai) => {
     if (!mulai || !selesai) return 0
     const dMulai = new Date(mulai)
@@ -51,80 +51,60 @@ export default function HalamanCuti({ profil }) {
     setPesanError('')
     setPesanSukses('')
 
-    const durasi = hitungJumlahHari(tanggalMulai, tanggalSelesai)
+    const durasiHari = hitungJumlahHari(tanggalMulai, tanggalSelesai)
 
-    if (durasi <= 0) {
+    if (durasiHari <= 0) {
       setPesanError('Tanggal selesai tidak boleh lebih awal dari tanggal mulai.')
       return
     }
 
-    if (jenisCuti === 'Cuti Tahunan' && profil?.sisa_cuti !== undefined && durasi > profil.sisa_cuti) {
+    if (jenisCuti === 'Cuti Tahunan' && profil?.sisa_cuti !== undefined && durasiHari > profil.sisa_cuti) {
       setPesanError(`Sisa kuota cuti tahunan Anda tidak mencukupi (${profil.sisa_cuti} hari tersisa).`)
       return
     }
 
     setSubmitting(true)
 
+    // Payload yang sesuai dengan kolom database Supabase
     const payload = {
       nama_karyawan: profil?.nama_lengkap || '',
       email_karyawan: profil?.email || '',
       jabatan: profil?.jabatan || '',
       jenis_cuti: jenisCuti,
-      tanggal_mulai: tanggalMulai,
       tgl_mulai: tanggalMulai,
-      tanggal_selesai: tanggalSelesai,
       tgl_selesai: tanggalSelesai,
-      jumlah_hari: durasi,
-      durasi: durasi,
-      lama_cuti: durasi,
+      durasi: durasiHari,
       alasan: alasan,
-      keterangan: alasan,
       status: 'Menunggu'
     }
 
     const { error } = await supabase.from('pengajuan_cuti').insert([payload])
 
     if (error) {
-      // Jika kolom tertentu tidak ada di DB, kirim format standar
-      const payloadStandar = {
-        nama_karyawan: profil?.nama_lengkap || '',
-        email_karyawan: profil?.email || '',
-        jabatan: profil?.jabatan || '',
-        jenis_cuti: jenisCuti,
-        tanggal_mulai: tanggalMulai,
-        tanggal_selesai: tanggalSelesai,
-        jumlah_hari: durasi,
+      setPesanError('Gagal mengajukan cuti: ' + error.message)
+    } else {
+      setPesanSukses('Pengajuan cuti berhasil dikirim!')
+
+      // Kirim Notifikasi WhatsApp ke Branch Manager (6281234567890)
+      kirimNotifKeBranchManager({
+        namaStaf: profil?.nama_lengkap,
+        jabatan: profil?.jabatan,
+        cabang: profil?.cabang_penugasan,
+        jenisCuti: jenisCuti,
+        tglMulai: tanggalMulai,
+        tglSelesai: tanggalSelesai,
+        jumlahHari: durasiHari,
         alasan: alasan,
-        status: 'Menunggu'
-      }
-      const { error: errStandar } = await supabase.from('pengajuan_cuti').insert([payloadStandar])
-      if (errStandar) {
-        setPesanError('Gagal mengajukan cuti: ' + errStandar.message)
-        setSubmitting(false)
-        return
-      }
+        nomorTujuan: '6281234567890'
+      })
+
+      // Reset form
+      setJenisCuti('Cuti Tahunan')
+      setTanggalMulai('')
+      setTanggalSelesai('')
+      setAlasan('')
+      muatPengajuan()
     }
-
-    setPesanSukses('Pengajuan cuti berhasil dikirim!')
-
-    // Kirim Notifikasi WhatsApp ke Branch Manager
-    kirimNotifKeBranchManager({
-      namaStaf: profil?.nama_lengkap,
-      jabatan: profil?.jabatan,
-      cabang: profil?.cabang_penugasan,
-      jenisCuti: jenisCuti,
-      tglMulai: tanggalMulai,
-      tglSelesai: tanggalSelesai,
-      jumlahHari: durasi,
-      alasan: alasan,
-      nomorTujuan: '6281234567890'
-    })
-
-    setJenisCuti('Cuti Tahunan')
-    setTanggalMulai('')
-    setTanggalSelesai('')
-    setAlasan('')
-    muatPengajuan()
     setSubmitting(false)
   }
 
@@ -272,12 +252,11 @@ export default function HalamanCuti({ profil }) {
               </thead>
               <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
                 {daftarPengajuan.map((item) => {
-                  // Fallback membaca nama kolom tanggal & durasi
-                  const tglAwal = item.tanggal_mulai || item.tgl_mulai || item.tgl_awal || item.mulai || ''
-                  const tglAkhir = item.tanggal_selesai || item.tgl_selesai || item.tgl_akhir || item.selesai || ''
-                  const durasiHari = item.jumlah_hari ?? item.durasi ?? item.lama_cuti ?? item.total_hari ?? (tglAwal && tglAkhir ? hitungJumlahHari(tglAwal, tglAkhir) : 0)
-                  const keterangan = item.alasan || item.keterangan || item.keperluan || '-'
-                  const status = item.status || item.status_pengajuan || 'Menunggu'
+                  const tglAwal = item.tgl_mulai || item.tanggal_mulai || ''
+                  const tglAkhir = item.tgl_selesai || item.tanggal_selesai || ''
+                  const durasiHari = item.durasi ?? item.jumlah_hari ?? (tglAwal && tglAkhir ? hitungJumlahHari(tglAwal, tglAkhir) : 0)
+                  const keterangan = item.alasan || item.keterangan || '-'
+                  const status = item.status || 'Menunggu'
 
                   return (
                     <tr key={item.id} className="hover:bg-gray-50/50 transition">
