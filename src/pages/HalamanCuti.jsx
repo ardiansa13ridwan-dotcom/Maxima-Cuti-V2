@@ -1,265 +1,313 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { supabase } from '../utils/supabaseClient'
+import { kirimNotifKeBranchManager } from '../utils/whatsappHelper'
 
 export default function HalamanCuti({ profil }) {
+  const isAdmin = profil?.jabatan?.toLowerCase() === 'branch manager' || profil?.email === 'ardi13@gmail.com'
+
+  const [daftarPengajuan, setDaftarPengajuan] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+
+  // State Form Pengajuan
+  const [jenisCuti, setJenisCuti] = useState('Cuti Tahunan')
   const [tanggalMulai, setTanggalMulai] = useState('')
   const [tanggalSelesai, setTanggalSelesai] = useState('')
   const [alasan, setAlasan] = useState('')
-  const [jenisCuti, setJenisCuti] = useState('Cuti Tahunan')
-  const [riwayat, setRiwayat] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [adaTandaTangan, setAdaTandaTangan] = useState(false)
-
-  const canvasRef = useRef(null)
-  const isDrawing = useRef(false)
+  const [pesanError, setPesanError] = useState('')
+  const [pesanSukses, setPesanSukses] = useState('')
 
   useEffect(() => {
-    if (profil) {
-      muatRiwayatCuti()
-    }
-    setTimeout(() => {
-      inisialisasiCanvas()
-    }, 200)
+    muatPengajuan()
   }, [profil])
 
-  const inisialisasiCanvas = () => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    canvas.width = canvas.offsetWidth
-    canvas.height = canvas.offsetHeight
-    const ctx = canvas.getContext('2d')
-    ctx.lineWidth = 3
-    ctx.lineCap = 'round'
-    ctx.strokeStyle = '#000000'
-  }
-
-  const mulaiMenggambar = (e) => {
-    isDrawing.current = true
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    const rect = canvas.getBoundingClientRect()
-    const clientX = e.clientX || (e.touches && e.touches[0].clientX)
-    const clientY = e.clientY || (e.touches && e.touches[0].clientY)
-    ctx.beginPath()
-    ctx.moveTo(clientX - rect.left, clientY - rect.top)
-  }
-
-  const menggambar = (e) => {
-    if (!isDrawing.current) return
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    const rect = canvas.getBoundingClientRect()
-    const clientX = e.clientX || (e.touches && e.touches[0].clientX)
-    const clientY = e.clientY || (e.touches && e.touches[0].clientY)
-    ctx.lineTo(clientX - rect.left, clientY - rect.top)
-    ctx.stroke()
-    setAdaTandaTangan(true)
-  }
-
-  const selesaiMenggambar = () => {
-    isDrawing.current = false
-  }
-
-  const hapusCanvas = () => {
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    setAdaTandaTangan(false)
-  }
-
-  const muatRiwayatCuti = async () => {
-    const { data, error } = await supabase
-      .from('pengajuan_cuti')
-      .select('*')
-      .eq('email_karyawan', profil.email)
-      .order('created_at', { ascending: false })
-
-    if (!error) {
-      setRiwayat(data || [])
-    }
-  }
-
-  const hitungHariCutiEfektif = (mulai, selesai) => {
-    let count = 0
-    let berjalan = new Date(mulai)
-    let akhir = new Date(selesai)
-    
-    const daftarTanggalMerah = [
-      '2026-01-01',
-      '2026-05-01',
-      '2026-08-17',
-      '2026-12-25'
-    ]
-    
-    while (berjalan <= akhir) {
-      const hariSaja = berjalan.getDay()
-      const yyyy = berjalan.getFullYear()
-      const mm = String(berjalan.getMonth() + 1).padStart(2, '0')
-      const dd = String(berjalan.getDate()).padStart(2, '0')
-      const formatTanggal = `${yyyy}-${mm}-${dd}`
-      
-      if (hariSaja !== 0 && !daftarTanggalMerah.includes(formatTanggal)) {
-        count++
-      }
-      berjalan.setDate(berjalan.getDate() + 1)
-    }
-    return count
-  }
-
-  const tanganiPengajuan = async (e) => {
-    e.preventDefault()
-    if (!tanggalMulai || !tanggalSelesai || !alasan) {
-      alert('Silakan lengkapi semua form pengajuan')
-      return
-    }
-
-    if (!adaTandaTangan) {
-      alert('Silakan bubuhkan tanda tangan kamu terlebih dahulu')
-      return
-    }
-
-    const ttdBase64 = canvasRef.current.toDataURL()
+  const muatPengajuan = async () => {
     setLoading(true)
+    let query = supabase.from('pengajuan_cuti').select('*').order('id', { ascending: false })
 
-    const totalHari = hitungHariCutiEfektif(tanggalMulai, tanggalSelesai)
+    // Jika staf biasa, hanya tampilkan pengajuan miliknya sendiri
+    if (!isAdmin && profil?.email) {
+      query = query.eq('email_karyawan', profil.email)
+    }
 
-    if (totalHari <= 0) {
-      alert('Hari pengajuan tidak valid atau bertepatan dengan hari libur nasional')
-      setLoading(false)
+    const { data, error } = await query
+    if (!error && data) {
+      setDaftarPengajuan(data)
+    }
+    setLoading(false)
+  }
+
+  // Hitung jumlah hari kerja (selisih tanggal)
+  const hitungJumlahHari = (mulai, selesai) => {
+    if (!mulai || !selesai) return 0
+    const dMulai = new Date(mulai)
+    const dSelesai = new Date(selesai)
+    const selisihWaktu = dSelesai.getTime() - dMulai.getTime()
+    const selisihHari = Math.ceil(selisihWaktu / (1000 * 3600 * 24)) + 1
+    return selisihHari > 0 ? selisihHari : 0
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setPesanError('')
+    setPesanSukses('')
+
+    const durasi = hitungJumlahHari(tanggalMulai, tanggalSelesai)
+
+    if (durasi <= 0) {
+      setPesanError('Tanggal selesai tidak boleh lebih awal dari tanggal mulai.')
       return
     }
 
-    const { error } = await supabase
-      .from('pengajuan_cuti')
-      .insert([{
-        nama_karyawan: profil.nama_lengkap,
-        email_karyawan: profil.email,
-        jabatan: profil.jabatan,
-        jenis_cuti: jenisCuti,
-        tgl_mulai: tanggalMulai,
-        tgl_selesai: tanggalSelesai,
-        total_hari: totalHari,
-        alasan: alasan,
-        status: 'Menunggu',
-        ttd_karyawan: ttdBase64
-      }])
+    // Validasi sisa kuota jika cuti tahunan
+    if (jenisCuti === 'Cuti Tahunan' && profil?.sisa_cuti !== undefined && durasi > profil.sisa_cuti) {
+      setPesanError(`Sisa kuota cuti tahunan Anda tidak mencukupi (${profil.sisa_cuti} hari tersisa).`)
+      return
+    }
 
-    setLoading(false)
+    setSubmitting(true)
+
+    const payload = {
+      nama_karyawan: profil?.nama_lengkap || 'Karyawan',
+      email_karyawan: profil?.email || '',
+      jabatan: profil?.jabatan || '',
+      cabang: profil?.cabang_penugasan || '',
+      jenis_cuti: jenisCuti,
+      tanggal_mulai: tanggalMulai,
+      tanggal_selesai: tanggalSelesai,
+      jumlah_hari: durasi,
+      alasan: alasan,
+      status: 'Menunggu Persetujuan',
+      tanggal_pengajuan: new Date().toISOString()
+    }
+
+    const { error } = await supabase.from('pengajuan_cuti').insert([payload])
 
     if (error) {
-      alert('Gagal mengajukan cuti: ' + error.message)
+      setPesanError('Gagal mengajukan cuti: ' + error.message)
     } else {
-      alert('Cuti berhasil diajukan ke sistem')
+      setPesanSukses('Pengajuan cuti berhasil dikirim! Menyiapkan notifikasi WhatsApp...')
+      
+      // Kirim Notifikasi WhatsApp ke Branch Manager
+      kirimNotifKeBranchManager({
+        namaStaf: profil?.nama_lengkap,
+        jabatan: profil?.jabatan,
+        cabang: profil?.cabang_penugasan,
+        jenisCuti: jenisCuti,
+        tglMulai: tanggalMulai,
+        tglSelesai: tanggalSelesai,
+        jumlahHari: durasi,
+        alasan: alasan
+      })
+
+      // Reset form
+      setJenisCuti('Cuti Tahunan')
       setTanggalMulai('')
       setTanggalSelesai('')
       setAlasan('')
-      hapusCanvas()
-      muatRiwayatCuti()
+      muatPengajuan()
+    }
+    setSubmitting(false)
+  }
+
+  // Aksi Persetujuan / Penolakan oleh Admin
+  const handleAksiStatus = async (id, statusBaru) => {
+    const konfirmasi = window.confirm(`Apakah Anda yakin ingin mengubah status menjadi "${statusBaru}"?`)
+    if (!konfirmasi) return
+
+    const { error } = await supabase
+      .from('pengajuan_cuti')
+      .update({ status: statusBaru })
+      .eq('id', id)
+
+    if (!error) {
+      muatPengajuan()
+    } else {
+      alert('Gagal memperbarui status: ' + error.message)
     }
   }
 
   return (
     <div className="space-y-6">
-      <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-100 bg-gradient-to-r from-white to-blue-50/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      {/* Header Info */}
+      <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-base font-bold text-gray-800">Informasi Akun Karyawan</h2>
-          <p className="text-xs text-gray-500 mt-0.5">Nama: {profil?.nama_lengkap} | Posisi: {profil?.jabatan}</p>
+          <h2 className="text-base font-bold text-gray-800">Form Pengajuan Cuti</h2>
+          <p className="text-xs text-gray-500 mt-0.5">Ajukan permohonan cuti resmi dan pantau status persetujuan</p>
         </div>
-        <div className="bg-blue-900 text-white px-5 py-3 rounded-xl shadow-md flex flex-col items-center justify-center min-w-[150px] text-center">
-          <span className="text-xxs font-bold uppercase tracking-wider text-blue-200">Sisa Kuota Cuti</span>
-          <span className="text-lg font-black mt-0.5">
-            {profil?.sisa_cuti < 0 ? (
-              <span className="text-red-300">Hutang {Math.abs(profil.sisa_cuti)} Hari</span>
-            ) : (
-              <span>{profil?.sisa_cuti || 0} Hari</span>
-            )}
-          </span>
+        <div className="bg-blue-50 text-blue-900 px-4 py-2 rounded-xl text-xs font-semibold">
+          Sisa Kuota Cuti Anda: <span className="font-bold text-sm text-blue-950">{profil?.sisa_cuti ?? 0} Hari</span>
         </div>
       </div>
 
-      <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-        <h2 className="text-base font-bold text-gray-800 mb-2">Form Pengajuan Cuti Mandiri V1 Style</h2>
-        <p className="text-xs text-gray-500 mb-4">Sistem otomatis mendeteksi dan memotong hari minggu serta tanggal merah dari hitungan cuti milikmu</p>
-        
-        <form onSubmit={tanganiPengajuan} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Jenis Pengajuan</label>
-            <select value={jenisCuti} onChange={e => setJenisCuti(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-600">
-              <option value="Cuti Tahunan">Cuti Tahunan (Potong Saldo)</option>
-              <option value="Izin">Izin (Potong Saldo)</option>
-              <option value="Cuti Melahirkan">Cuti Melahirkan (Tanpa Potong)</option>
-            </select>
+      {/* Form Input Pengajuan */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <h3 className="text-sm font-bold text-gray-800 mb-4">Buat Permohonan Cuti Baru</h3>
+
+        {pesanError && (
+          <div className="bg-red-50 text-red-700 p-3 rounded-xl text-xs mb-4 border border-red-100 font-medium">
+            ⚠️ {pesanError}
           </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tanggal Mulai</label>
-            <input type="date" value={tanggalMulai} onChange={e => setTanggalMulai(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-600" required />
+        )}
+
+        {pesanSukses && (
+          <div className="bg-green-50 text-green-700 p-3 rounded-xl text-xs mb-4 border border-green-100 font-medium">
+            ✅ {pesanSukses}
           </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tanggal Selesai</label>
-            <input type="date" value={tanggalSelesai} onChange={e => setTanggalSelesai(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-600" required />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Alasan Cuti</label>
-            <textarea value={alasan} onChange={e => setAlasan(e.target.value)} placeholder="Tulis alasan keperluan cuti milikmu" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-600 h-24 resize-none" required />
+            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Nama Pemohon</label>
+            <input 
+              type="text" 
+              value={profil?.nama_lengkap || ''} 
+              disabled 
+              className="w-full bg-gray-50 border border-gray-200 p-2.5 rounded-xl text-sm text-gray-600 font-medium"
+            />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tanda Tangan Karyawan</label>
-            <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 w-full h-36">
-              <canvas
-                ref={canvasRef}
-                onMouseDown={mulaiMenggambar}
-                onMouseMove={menggambar}
-                onMouseUp={selesaiMenggambar}
-                onMouseLeave={selesaiMenggambar}
-                onTouchStart={mulaiMenggambar}
-                onTouchMove={menggambar}
-                onTouchEnd={selesaiMenggambar}
-                className="w-full h-full bg-white cursor-crosshair blocks touch-none"
-              />
-            </div>
-            <button type="button" onClick={hapusCanvas} className="text-xs text-red-600 font-bold mt-1 block">Hapus Tanda Tangan</button>
+            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Jenis Cuti</label>
+            <select 
+              value={jenisCuti} 
+              onChange={(e) => setJenisCuti(e.target.value)}
+              className="w-full border border-gray-200 p-2.5 rounded-xl text-sm focus:outline-none focus:border-blue-900 bg-white"
+            >
+              <option value="Cuti Tahunan">Cuti Tahunan</option>
+              <option value="Cuti Sakit">Cuti Sakit</option>
+              <option value="Cuti Melahirkan">Cuti Melahirkan</option>
+              <option value="Cuti Alasan Penting">Cuti Alasan Penting</option>
+              <option value="Cuti Khusus">Cuti Khusus</option>
+            </select>
           </div>
-          
-          <button type="submit" disabled={loading} className="w-full bg-blue-800 hover:bg-blue-900 disabled:bg-blue-400 text-white font-semibold py-3 rounded-xl text-sm transition shadow-md">
-            {loading ? 'Mengirim...' : 'Kirim Pengajuan Cuti'}
-          </button>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Tanggal Mulai Cuti</label>
+            <input 
+              type="date" 
+              value={tanggalMulai} 
+              onChange={(e) => setTanggalMulai(e.target.value)} 
+              required 
+              className="w-full border border-gray-200 p-2.5 rounded-xl text-sm focus:outline-none focus:border-blue-900"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Tanggal Selesai Cuti</label>
+            <input 
+              type="date" 
+              value={tanggalSelesai} 
+              onChange={(e) => setTanggalSelesai(e.target.value)} 
+              required 
+              className="w-full border border-gray-200 p-2.5 rounded-xl text-sm focus:outline-none focus:border-blue-900"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+              Alasan / Keterangan Cuti
+            </label>
+            <textarea 
+              rows="3" 
+              value={alasan} 
+              onChange={(e) => setAlasan(e.target.value)} 
+              placeholder="Tuliskan keterangan atau keperluan izin cuti..."
+              required
+              className="w-full border border-gray-200 p-2.5 rounded-xl text-sm focus:outline-none focus:border-blue-900"
+            ></textarea>
+          </div>
+
+          {tanggalMulai && tanggalSelesai && (
+            <div className="md:col-span-2 bg-blue-50/50 p-3 rounded-xl text-xs text-blue-900 font-semibold">
+              Total Durasi Pengajuan: {hitungJumlahHari(tanggalMulai, tanggalSelesai)} Hari
+            </div>
+          )}
+
+          <div className="md:col-span-2 pt-2">
+            <button 
+              type="submit" 
+              disabled={submitting}
+              className="bg-blue-900 hover:bg-blue-950 text-white font-bold px-6 py-2.5 rounded-xl text-xs uppercase tracking-wider transition shadow-sm disabled:opacity-50"
+            >
+              {submitting ? 'Mengirim Pengajuan...' : 'Kirim Pengajuan Cuti'}
+            </button>
+          </div>
         </form>
       </div>
 
+      {/* Tabel Riwayat & Daftar Pengajuan */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-4 bg-gray-50 border-b border-gray-100">
-          <h3 className="font-bold text-gray-700 text-xs uppercase tracking-wider">Status Pengajuan Cuti Milikmu</h3>
+        <div className="p-5 border-b border-gray-100">
+          <h3 className="text-sm font-bold text-gray-800">
+            {isAdmin ? 'Semua Pengajuan Cuti Staf' : 'Riwayat Pengajuan Cuti Saya'}
+          </h3>
         </div>
-        
-        <div className="divide-y divide-gray-100">
-          {riwayat.length === 0 ? (
-            <p className="p-6 text-center text-gray-400 text-sm italic">Belum ada riwayat pengajuan cuti</p>
-          ) : (
-            riwayat.map(r => (
-              <div key={r.id} className="p-4 space-y-2 bg-white">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-bold text-gray-900 text-sm">{r.alasan}</p>
-                    <p className="text-xs text-gray-500">Periode: {r.tgl_mulai} s/d {r.tgl_selesai} ({r.total_hari} Hari Kerja)</p>
-                    <p className="text-xs text-blue-600 font-medium">{r.jenis_cuti}</p>
-                    {r.ttd_karyawan && (
-                      <div className="mt-2">
-                        <p className="text-xxs text-gray-400 uppercase font-bold">Tanda Tangan Kamu:</p>
-                        <img src={r.ttd_karyawan} alt="TTD" className="h-10 object-contain border border-gray-100 rounded bg-gray-50" />
-                      </div>
+
+        {loading ? (
+          <p className="p-6 text-xs text-gray-400">Sedang memuat data cuti...</p>
+        ) : daftarPengajuan.length === 0 ? (
+          <p className="p-6 text-sm text-gray-400 italic text-center">Belum ada data pengajuan cuti</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50 text-gray-700 text-xs font-bold uppercase border-b border-gray-100">
+                  <th className="p-4">Karyawan</th>
+                  <th className="p-4">Jenis Cuti</th>
+                  <th className="p-4">Periode</th>
+                  <th className="p-4">Durasi</th>
+                  <th className="p-4">Keterangan</th>
+                  <th className="p-4">Status</th>
+                  {isAdmin && <th className="p-4">Aksi Persetujuan</th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
+                {daftarPengajuan.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50/50 transition">
+                    <td className="p-4">
+                      <p className="font-semibold text-gray-900">{item.nama_karyawan}</p>
+                      <p className="text-xxs text-gray-400">{item.jabatan || item.cabang || item.email_karyawan}</p>
+                    </td>
+                    <td className="p-4 text-xs font-medium text-gray-600">{item.jenis_cuti}</td>
+                    <td className="p-4 text-xs text-gray-500 whitespace-nowrap">
+                      {item.tanggal_mulai} s/d {item.tanggal_selesai}
+                    </td>
+                    <td className="p-4 text-xs font-bold text-blue-900">{item.jumlah_hari} Hari</td>
+                    <td className="p-4 text-xs text-gray-500 max-w-xs truncate">{item.alasan || '-'}</td>
+                    <td className="p-4 whitespace-nowrap">
+                      <span className={`text-xxs font-bold px-2.5 py-1 rounded-full ${
+                        item.status === 'Disetujui' 
+                          ? 'bg-green-100 text-green-800' 
+                          : item.status === 'Ditolak' 
+                          ? 'bg-red-100 text-red-800' 
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {item.status || 'Menunggu'}
+                      </span>
+                    </td>
+                    {isAdmin && (
+                      <td className="p-4 flex gap-1.5 whitespace-nowrap">
+                        <button 
+                          onClick={() => handleAksiStatus(item.id, 'Disetujui')}
+                          className="bg-green-50 hover:bg-green-100 text-green-700 text-xs px-2.5 py-1 rounded-lg font-medium transition"
+                        >
+                          Setujui
+                        </button>
+                        <button 
+                          onClick={() => handleAksiStatus(item.id, 'Ditolak')}
+                          className="bg-red-50 hover:bg-red-100 text-red-600 text-xs px-2.5 py-1 rounded-lg font-medium transition"
+                        >
+                          Tolak
+                        </button>
+                      </td>
                     )}
-                  </div>
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                    r.status === 'Disetujui' ? 'bg-green-100 text-green-800' :
-                    r.status === 'Ditolak' ? 'bg-red-100 text-red-800' :
-                    'bg-yellow-100 text-yellow-800'
-                  }`}>{r.status}</span>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   )
