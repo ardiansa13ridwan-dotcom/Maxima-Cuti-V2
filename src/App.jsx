@@ -1,113 +1,90 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './utils/supabaseClient'
-import HalamanLogin from './pages/HalamanLogin'
-import HalamanCuti from './pages/HalamanCuti'
+import TataLetak from './components/TataLetak'
+import HalamanDashboard from './pages/HalamanDashboard'
 import HalamanMaster from './pages/HalamanMaster'
 import HalamanRekapan from './pages/HalamanRekapan'
-import HalamanDashboard from './pages/HalamanDashboard'
+import HalamanPengajuan from './pages/HalamanPengajuan'
 import HalamanRiwayat from './pages/HalamanRiwayat'
-import TataLetak from './components/TataLetak'
+import HalamanLogin from './pages/HalamanLogin'
 
 export default function App() {
   const [session, setSession] = useState(null)
   const [profil, setProfil] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [loadingAwal, setLoadingAwal] = useState(true) // HANYA untuk loading pertama kali buka web
   const [halamanAktif, setHalamanAktif] = useState('dashboard')
 
   useEffect(() => {
+    // 1. Fungsi ambil profil dari tabel profil_karyawan_v2
+    const ambilProfil = async (emailUser) => {
+      try {
+        const { data, error } = await supabase
+          .from('profil_karyawan_v2')
+          .select('*')
+          .eq('email', emailUser)
+          .single()
+
+        if (data && !error) {
+          setProfil(data)
+        }
+      } catch (err) {
+        console.error('Gagal mengambil profil:', err)
+      } finally {
+        setLoadingAwal(false) // Selesai loading awal
+      }
+    }
+
+    // 2. Cek sesi aktif saat pertama kali web dibuka
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
-      if (session) {
-        muatProfilKaryawan(session.user.email)
+      if (session?.user?.email) {
+        ambilProfil(session.user.email)
       } else {
-        setLoading(false)
+        setLoadingAwal(false)
       }
     })
 
+    // 3. Listener auth change (JANGAN ubah loadingAwal jadi true di sini!)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
-      if (session) {
-        muatProfilKaryawan(session.user.email)
+      if (session?.user?.email) {
+        // Ambil profil di latar belakang tanpa mematikan UI
+        ambilProfil(session.user.email)
       } else {
         setProfil(null)
-        setLoading(false)
+        setLoadingAwal(false)
       }
     })
 
-    return () => subscription.unsubscribe()
-  }, [])
-
-  const muatProfilKaryawan = async (email) => {
-    try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('profil_karyawan_v2')
-        .select('id, email, nama_lengkap, jabatan, sisa_cuti, tanggal_masuk')
-        .eq('email', email)
-        .single()
-
-      if (!error && data) {
-        setProfil(data)
-      } else {
-        setProfil(null)
-      }
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
+    // 4. Cleanup listener saat komponen unmount
+    return () => {
+      subscription?.unsubscribe()
     }
-  }
+  }, []) // Array dependensi KOSONG agar tidak looping
 
-  if (loading) {
+  // Tampilan saat pertama kali membuka aplikasi
+  if (loadingAwal) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="w-10 h-10 border-4 border-blue-900 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-sm text-gray-500 mt-3 font-medium">Memverifikasi hak akses kamu...</p>
-        </div>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
+        <div className="w-10 h-10 border-4 border-blue-900 border-t-transparent rounded-full animate-spin"></div>
+        <p className="mt-4 text-xs font-semibold text-gray-500 tracking-wide">Memeriksa hak akses kamu...</p>
       </div>
     )
   }
 
+  // Jika belum login, tampilkan halaman Login
   if (!session) {
-    return <HalamanLogin />
+    return <HalamanLogin onLoginSuccess={() => setLoadingAwal(false)} />
   }
 
-  const renderHalamanSesuaiHakAkses = () => {
-    if (!profil) {
-      return (
-        <div className="p-6 max-w-md mx-auto mt-10 text-center bg-red-50 border border-red-200 rounded-2xl shadow-sm">
-          <p className="text-sm text-red-600 font-bold">Data profil milikmu belum siap</p>
-          <p className="text-xs text-red-500 mt-1">Sistem sedang memproses pembuatan akun baru. Silakan muat ulang halaman ini secara berkala.</p>
-        </div>
-      )
-    }
-
-    const posisiKaryawan = profil.jabatan ? profil.jabatan.toUpperCase() : ''
-    const statusValidBM = posisiKaryawan === 'BM' || posisiKaryawan === 'BRANCH MANAGER' || profil.email === 'ardi13@gmail.com'
-
-    if (halamanAktif === 'dashboard') {
-      return statusValidBM ? <HalamanDashboard profil={profil} /> : <HalamanCuti profil={profil} />
-    }
-
-    if (halamanAktif === 'master') {
-      return statusValidBM ? <HalamanMaster profil={profil} /> : <HalamanCuti profil={profil} />
-    }
-
-    if (halamanAktif === 'rekapan') {
-      return statusValidBM ? <HalamanRekapan profil={profil} /> : <HalamanCuti profil={profil} />
-    }
-
-    if (halamanAktif === 'riwayat') {
-      return <HalamanRiwayat profil={profil} />
-    }
-
-    return <HalamanCuti profil={profil} />
-  }
-
+  // Jika sudah login, tampilkan Dashboard/Menu Utama
   return (
-    <TataLetak profil={profil} setHalamanAktif={setHalamanAktif} halamanAktif={halamanAktif}>
-      {renderHalamanSesuaiHakAkses()}
+    <TataLetak profil={profil} halamanAktif={halamanAktif} setHalamanAktif={setHalamanAktif}>
+      {halamanAktif === 'dashboard' && <HalamanDashboard profil={profil} />}
+      {halamanAktif === 'master' && <HalamanMaster />}
+      {halamanAktif === 'rekapan' && <HalamanRekapan />}
+      {halamanAktif === 'cuti' && <HalamanPengajuan profil={profil} />}
+      {halamanAktif === 'riwayat' && <HalamanRiwayat />}
     </TataLetak>
   )
 }
