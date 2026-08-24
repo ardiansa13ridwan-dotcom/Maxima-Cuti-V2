@@ -9,7 +9,7 @@ export default function HalamanCuti({ profil }) {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
-  // State Form Pengajuan sesuai struktur awal
+  // State Form Pengajuan
   const [jenisCuti, setJenisCuti] = useState('Cuti Tahunan')
   const [tanggalMulai, setTanggalMulai] = useState('')
   const [tanggalSelesai, setTanggalSelesai] = useState('')
@@ -36,6 +36,7 @@ export default function HalamanCuti({ profil }) {
     setLoading(false)
   }
 
+  // Hitung jumlah hari
   const hitungJumlahHari = (mulai, selesai) => {
     if (!mulai || !selesai) return 0
     const dMulai = new Date(mulai)
@@ -70,38 +71,60 @@ export default function HalamanCuti({ profil }) {
       jabatan: profil?.jabatan || '',
       jenis_cuti: jenisCuti,
       tanggal_mulai: tanggalMulai,
+      tgl_mulai: tanggalMulai,
       tanggal_selesai: tanggalSelesai,
+      tgl_selesai: tanggalSelesai,
       jumlah_hari: durasi,
+      durasi: durasi,
+      lama_cuti: durasi,
       alasan: alasan,
-      status: 'Menunggu Persetujuan'
+      keterangan: alasan,
+      status: 'Menunggu'
     }
 
     const { error } = await supabase.from('pengajuan_cuti').insert([payload])
 
     if (error) {
-      setPesanError('Gagal mengajukan cuti: ' + error.message)
-    } else {
-      setPesanSukses('Pengajuan cuti berhasil dikirim!')
-      
-      // Kirim Notifikasi WhatsApp ke Branch Manager (6281234567890)
-      kirimNotifKeBranchManager({
-        namaStaf: profil?.nama_lengkap,
-        jabatan: profil?.jabatan,
-        cabang: profil?.cabang_penugasan,
-        jenisCuti: jenisCuti,
-        tglMulai: tanggalMulai,
-        tglSelesai: tanggalSelesai,
-        jumlahHari: durasi,
+      // Jika kolom tertentu tidak ada di DB, kirim format standar
+      const payloadStandar = {
+        nama_karyawan: profil?.nama_lengkap || '',
+        email_karyawan: profil?.email || '',
+        jabatan: profil?.jabatan || '',
+        jenis_cuti: jenisCuti,
+        tanggal_mulai: tanggalMulai,
+        tanggal_selesai: tanggalSelesai,
+        jumlah_hari: durasi,
         alasan: alasan,
-        nomorTujuan: '6281234567890'
-      })
-
-      setJenisCuti('Cuti Tahunan')
-      setTanggalMulai('')
-      setTanggalSelesai('')
-      setAlasan('')
-      muatPengajuan()
+        status: 'Menunggu'
+      }
+      const { error: errStandar } = await supabase.from('pengajuan_cuti').insert([payloadStandar])
+      if (errStandar) {
+        setPesanError('Gagal mengajukan cuti: ' + errStandar.message)
+        setSubmitting(false)
+        return
+      }
     }
+
+    setPesanSukses('Pengajuan cuti berhasil dikirim!')
+
+    // Kirim Notifikasi WhatsApp ke Branch Manager
+    kirimNotifKeBranchManager({
+      namaStaf: profil?.nama_lengkap,
+      jabatan: profil?.jabatan,
+      cabang: profil?.cabang_penugasan,
+      jenisCuti: jenisCuti,
+      tglMulai: tanggalMulai,
+      tglSelesai: tanggalSelesai,
+      jumlahHari: durasi,
+      alasan: alasan,
+      nomorTujuan: '6281234567890'
+    })
+
+    setJenisCuti('Cuti Tahunan')
+    setTanggalMulai('')
+    setTanggalSelesai('')
+    setAlasan('')
+    muatPengajuan()
     setSubmitting(false)
   }
 
@@ -248,47 +271,56 @@ export default function HalamanCuti({ profil }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
-                {daftarPengajuan.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50/50 transition">
-                    <td className="p-4">
-                      <p className="font-semibold text-gray-900">{item.nama_karyawan}</p>
-                      <p className="text-xxs text-gray-400">{item.jabatan || item.email_karyawan}</p>
-                    </td>
-                    <td className="p-4 text-xs font-medium text-gray-600">{item.jenis_cuti}</td>
-                    <td className="p-4 text-xs text-gray-500 whitespace-nowrap">
-                      {item.tanggal_mulai ? `${item.tanggal_mulai} s/d ${item.tanggal_selesai}` : '-'}
-                    </td>
-                    <td className="p-4 text-xs font-bold text-blue-900">{item.jumlah_hari || 0} Hari</td>
-                    <td className="p-4 text-xs text-gray-500 max-w-xs truncate">{item.alasan || '-'}</td>
-                    <td className="p-4 whitespace-nowrap">
-                      <span className={`text-xxs font-bold px-2.5 py-1 rounded-full ${
-                        item.status === 'Disetujui' 
-                          ? 'bg-green-100 text-green-800' 
-                          : item.status === 'Ditolak' 
-                          ? 'bg-red-100 text-red-800' 
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {item.status || 'Menunggu'}
-                      </span>
-                    </td>
-                    {isAdmin && (
-                      <td className="p-4 flex gap-1.5 whitespace-nowrap">
-                        <button 
-                          onClick={() => handleAksiStatus(item.id, 'Disetujui')}
-                          className="bg-green-50 hover:bg-green-100 text-green-700 text-xs px-2.5 py-1 rounded-lg font-medium transition"
-                        >
-                          Setujui
-                        </button>
-                        <button 
-                          onClick={() => handleAksiStatus(item.id, 'Ditolak')}
-                          className="bg-red-50 hover:bg-red-100 text-red-600 text-xs px-2.5 py-1 rounded-lg font-medium transition"
-                        >
-                          Tolak
-                        </button>
+                {daftarPengajuan.map((item) => {
+                  // Fallback membaca nama kolom tanggal & durasi
+                  const tglAwal = item.tanggal_mulai || item.tgl_mulai || item.tgl_awal || item.mulai || ''
+                  const tglAkhir = item.tanggal_selesai || item.tgl_selesai || item.tgl_akhir || item.selesai || ''
+                  const durasiHari = item.jumlah_hari ?? item.durasi ?? item.lama_cuti ?? item.total_hari ?? (tglAwal && tglAkhir ? hitungJumlahHari(tglAwal, tglAkhir) : 0)
+                  const keterangan = item.alasan || item.keterangan || item.keperluan || '-'
+                  const status = item.status || item.status_pengajuan || 'Menunggu'
+
+                  return (
+                    <tr key={item.id} className="hover:bg-gray-50/50 transition">
+                      <td className="p-4">
+                        <p className="font-semibold text-gray-900">{item.nama_karyawan}</p>
+                        <p className="text-xxs text-gray-400">{item.jabatan || item.email_karyawan}</p>
                       </td>
-                    )}
-                  </tr>
-                ))}
+                      <td className="p-4 text-xs font-medium text-gray-600">{item.jenis_cuti}</td>
+                      <td className="p-4 text-xs text-gray-500 whitespace-nowrap">
+                        {tglAwal && tglAkhir ? `${tglAwal} s/d ${tglAkhir}` : (tglAwal || '-')}
+                      </td>
+                      <td className="p-4 text-xs font-bold text-blue-900">{durasiHari} Hari</td>
+                      <td className="p-4 text-xs text-gray-500 max-w-xs truncate">{keterangan}</td>
+                      <td className="p-4 whitespace-nowrap">
+                        <span className={`text-xxs font-bold px-2.5 py-1 rounded-full ${
+                          status === 'Disetujui' 
+                            ? 'bg-green-100 text-green-800' 
+                            : status === 'Ditolak' 
+                            ? 'bg-red-100 text-red-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {status}
+                        </span>
+                      </td>
+                      {isAdmin && (
+                        <td className="p-4 flex gap-1.5 whitespace-nowrap">
+                          <button 
+                            onClick={() => handleAksiStatus(item.id, 'Disetujui')}
+                            className="bg-green-50 hover:bg-green-100 text-green-700 text-xs px-2.5 py-1 rounded-lg font-medium transition"
+                          >
+                            Setujui
+                          </button>
+                          <button 
+                            onClick={() => handleAksiStatus(item.id, 'Ditolak')}
+                            className="bg-red-50 hover:bg-red-100 text-red-600 text-xs px-2.5 py-1 rounded-lg font-medium transition"
+                          >
+                            Tolak
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
