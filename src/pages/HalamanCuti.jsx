@@ -6,7 +6,7 @@ export default function HalamanCuti({ profil }) {
   const isAdmin = profil?.jabatan?.toLowerCase() === 'branch manager' || profil?.email === 'ardi13@gmail.com'
 
   const [daftarPengajuan, setDaftarPengajuan] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   // State Form Pengajuan
@@ -18,11 +18,12 @@ export default function HalamanCuti({ profil }) {
   const [pesanSukses, setPesanSukses] = useState('')
 
   useEffect(() => {
-    muatPengajuan()
-  }, [profil])
+    if (profil?.email) {
+      muatPengajuan()
+    }
+  }, [profil?.email, isAdmin])
 
   const muatPengajuan = async () => {
-    setLoading(true)
     let query = supabase.from('pengajuan_cuti').select('*').order('id', { ascending: false })
 
     if (!isAdmin && profil?.email) {
@@ -33,7 +34,6 @@ export default function HalamanCuti({ profil }) {
     if (!error && data) {
       setDaftarPengajuan(data)
     }
-    setLoading(false)
   }
 
   // Hitung jumlah hari cuti
@@ -65,15 +65,15 @@ export default function HalamanCuti({ profil }) {
 
     setSubmitting(true)
 
-    // Payload yang sesuai dengan kolom database Supabase
+    // Payload yang sesuai 100% dengan skema Supabase (mengisi kolom total_hari)
     const payload = {
       nama_karyawan: profil?.nama_lengkap || '',
       email_karyawan: profil?.email || '',
       jabatan: profil?.jabatan || '',
       jenis_cuti: jenisCuti,
-      tgl_mulai: tanggalMulai,
-      tgl_selesai: tanggalSelesai,
-      durasi: durasiHari,
+      tanggal_mulai: tanggalMulai,
+      tanggal_selesai: tanggalSelesai,
+      total_hari: durasiHari,
       alasan: alasan,
       status: 'Menunggu'
     }
@@ -232,9 +232,7 @@ export default function HalamanCuti({ profil }) {
           </h3>
         </div>
 
-        {loading ? (
-          <p className="p-6 text-xs text-gray-400">Sedang memuat data cuti...</p>
-        ) : daftarPengajuan.length === 0 ? (
+        {daftarPengajuan.length === 0 ? (
           <p className="p-6 text-sm text-gray-400 italic text-center">Belum ada data pengajuan cuti</p>
         ) : (
           <div className="overflow-x-auto">
@@ -252,9 +250,9 @@ export default function HalamanCuti({ profil }) {
               </thead>
               <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
                 {daftarPengajuan.map((item) => {
-                  const tglAwal = item.tgl_mulai || item.tanggal_mulai || ''
-                  const tglAkhir = item.tgl_selesai || item.tanggal_selesai || ''
-                  const durasiHari = item.durasi ?? item.jumlah_hari ?? (tglAwal && tglAkhir ? hitungJumlahHari(tglAwal, tglAkhir) : 0)
+                  const tglAwal = item.tanggal_mulai || item.tgl_mulai || ''
+                  const tglAkhir = item.tanggal_selesai || item.tgl_selesai || ''
+                  const durasiHari = item.total_hari ?? item.durasi ?? item.jumlah_hari ?? (tglAwal && tglAkhir ? hitungJumlahHari(tglAwal, tglAkhir) : 0)
                   const keterangan = item.alasan || item.keterangan || '-'
                   const status = item.status || 'Menunggu'
 
